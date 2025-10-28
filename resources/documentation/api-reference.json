@@ -1,0 +1,60 @@
+{
+    "engage": {
+        "description": "Initializes the Mapp SDK with required configuration",
+        "parameters": [
+            {
+                "name": "sdkKey",
+                "type": "string",
+                "required": true,
+                "description": "Your SDK key from Mapp"
+            },
+            {
+                "name": "googleProjectId",
+                "type": "string",
+                "required": true,
+                "description": "Google Project ID for FCM"
+            },
+            {
+                "name": "server",
+                "type": "string",
+                "required": true,
+                "description": "Mapp server URL"
+            },
+            {
+                "name": "appId",
+                "type": "string",
+                "required": true,
+                "description": "Your application ID"
+            },
+            {
+                "name": "tenantId",
+                "type": "string",
+                "required": true,
+                "description": "Your tenant ID"
+            }
+        ],
+        "example": "engage('sdk-key', 'project-id', 'server-url', 'app-id', 'tenant-id')",
+        "bestPractices": [
+            "Call at application startup",
+            "Handle initialization errors",
+            "Verify all parameters are correct"
+        ]
+    },
+    "setAlias": {
+        "description": "Sets the user alias for identification",
+        "parameters": [
+            {
+                "name": "alias",
+                "type": "string",
+                "required": true,
+                "description": "User alias identifier"
+            }
+        ],
+        "example": "await MappSdk.setAlias('user123')",
+        "bestPractices": [
+            "Call after successful initialization",
+            "Use unique identifiers",
+            "Handle async operation properly"
+        ]
+    }
+}

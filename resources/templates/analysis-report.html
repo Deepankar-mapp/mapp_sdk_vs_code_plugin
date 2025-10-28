@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            padding: 20px;
+            color: var(--vscode-editor-foreground);
+            background-color: var(--vscode-editor-background);
+        }
+        .issue {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .error { background-color: var(--vscode-errorForeground); }
+        .warning { background-color: var(--vscode-warningForeground); }
+        .info { background-color: var(--vscode-infoForeground); }
+        .suggestion {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: var(--vscode-textBlockQuote-background);
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .metric-card {
+            padding: 15px;
+            border-radius: 4px;
+            background-color: var(--vscode-editor-inactiveSelectionBackground);
+        }
+        code {
+            font-family: 'Fira Code', monospace;
+            background-color: var(--vscode-textCodeBlock-background);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mapp SDK Analysis Report</h1>
+    
+    <div class="metrics">
+        <div class="metric-card">
+            <h3>Initialization Score</h3>
+            <div class="score">{{initScore}}</div>
+        </div>
+        <div class="metric-card">
+            <h3>Method Usage Score</h3>
+            <div class="score">{{methodScore}}</div>
+        </div>
+        <div class="metric-card">
+            <h3>Error Handling Score</h3>
+            <div class="score">{{errorScore}}</div>
+        </div>
+    </div>
+
+    <h2>Issues Found</h2>
+    <div id="issues">
+        {{#each issues}}
+        <div class="issue {{severity}}">
+            <h4>{{title}}</h4>
+            <p>{{description}}</p>
+            <code>{{code}}</code>
+        </div>
+        {{/each}}
+    </div>
+
+    <h2>AI Suggestions</h2>
+    <div id="suggestions">
+        {{#each suggestions}}
+        <div class="suggestion">
+            <h4>{{title}}</h4>
+            <p>{{description}}</p>
+            {{#if codeExample}}
+            <pre><code>{{codeExample}}</code></pre>
+            {{/if}}
+        </div>
+        {{/each}}
+    </div>
+
+    <script>
+        const vscode = acquireVsCodeApi();
+        
+        document.addEventListener('click', (e) => {
+            const target = e.target.closest('.suggestion');
+            if (target) {
+                vscode.postMessage({
+                    command: 'applySuggestion',
+                    suggestion: target.dataset.suggestion
+                });
+            }
+        });
+    </script>
+</body>
+</html>
