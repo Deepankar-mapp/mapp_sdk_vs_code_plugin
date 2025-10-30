@@ -112,6 +112,45 @@ export const flutterRules: TechnologyRules = {
                 example: 'await MappSdk.stopGeoFencing()',
                 requiresInitialization: true,
                 description: 'Stop geofencing services'
+            },
+            addTag: {
+                required: false,
+                parameters: {},
+                example: `MappSdk.addTag("some_tag")`,
+                requiresInitialization: true,
+                description: `Check if the code has MappSdk.addTag() or not. This method has single argument of type String.`
+            },
+
+            fetchInboxMessage: {
+                required: false,
+                parameters: {},
+                example: `MappSdk.fetchInboxMessage();`,
+                requiresInitialization: true,
+                description: `Check if MappSdk.fetchInboxMessage() is being called to fetch inbox messages when required.`
+            },
+
+            removeTag: {
+                required: false,
+                parameters: {},
+                example: `MappSdk.removeTag("some_tag")`,
+                requiresInitialization: true,
+                description: `Check if the code has MappSdk.removeTag() or not. This method has single argument of type String.`
+            },
+
+            setCustomAttributes: {
+                required: false,
+                parameters: {},
+                example: `MappSdk.setCustomAttributes(attributes);`,
+                requiresInitialization: true,
+                description: `Check if the code has MappSdk.setCustomAttributes() or not. This method has single argument of type Map<String, dynamic>.`
+            },
+
+            triggerInApp: {
+                required: false,
+                parameters: {},
+                example: `MappSdk.triggerInApp("app_open");`,
+                requiresInitialization: true,
+                description: `Check if code has MappSdk.triggerInApp() or not. This method has a single argument of type String;`
             }
         },
         bestPractices: [
