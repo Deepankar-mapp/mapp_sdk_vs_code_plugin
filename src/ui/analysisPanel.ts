@@ -5,14 +5,15 @@ export class AnalysisResultPanel {
     private readonly _panel: vscode.WebviewPanel;
     private _disposables: vscode.Disposable[] = [];
 
-    public static show(results: any[], suggestions: string[]) {
+    // ✅ Show just the AI response (string or raw text object)
+    public static show(result: any) {
         const column = vscode.window.activeTextEditor
             ? vscode.window.activeTextEditor.viewColumn
             : undefined;
 
         if (AnalysisResultPanel.currentPanel) {
             AnalysisResultPanel.currentPanel._panel.reveal(column);
-            AnalysisResultPanel.currentPanel._update(results, suggestions);
+            AnalysisResultPanel.currentPanel._update(result);
         } else {
             const panel = vscode.window.createWebviewPanel(
                 'mappAnalysis',
@@ -21,53 +22,72 @@ export class AnalysisResultPanel {
                 { enableScripts: true }
             );
             AnalysisResultPanel.currentPanel = new AnalysisResultPanel(panel);
-            AnalysisResultPanel.currentPanel._update(results, suggestions);
+            AnalysisResultPanel.currentPanel._update(result);
         }
     }
 
-    private _update(results: any[], suggestions: string[]) {
-        this._panel.webview.html = this._getHtmlContent(results, suggestions);
+    private _update(result: any) {
+        this._panel.webview.html = this._getHtmlContent(result);
     }
 
-    private _getHtmlContent(results: any[], suggestions: string[]): string {
-        const issuesHtml = results.map(result => `
-            <div class="file-section">
-                <h3>${result.file}</h3>
-                <ul>
-                    ${result.issues.map((issue: any) => `
-                        <li class="issue-item">
-                            <strong>${issue.severity}:</strong> ${issue.message}
-                            ${issue.suggestion ? `<pre><code>${issue.suggestion}</code></pre>` : ''}
-                        </li>
-                    `).join('')}
-                </ul>
-            </div>
-        `).join('');
+    private _escapeHtml(text: string): string {
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
 
-        const suggestionsHtml = suggestions.map(suggestion => 
-            `<li class="suggestion-item">${suggestion}</li>`
-        ).join('');
+    private _getHtmlContent(result: any): string {
+        // Handle both string and { rawText: '...' } cases
+        const rawText =
+            typeof result === 'string'
+                ? result
+                : typeof result?.rawText === 'string'
+                ? result.rawText
+                : 'No AI analysis available.';
+
+        const escaped = this._escapeHtml(rawText);
 
         return `
             <!DOCTYPE html>
             <html>
             <head>
+                <meta charset="UTF-8" />
+                <meta http-equiv="Content-Security-Policy"
+                    content="default-src 'none'; style-src 'unsafe-inline' ${this._panel.webview.cspSource};">
                 <style>
-                    body { padding: 20px; }
-                    .file-section { margin-bottom: 20px; }
-                    .issue-item { margin: 10px 0; }
-                    .suggestion-item { margin: 5px 0; }
-                    pre { background-color: #f0f0f0; padding: 10px; }
+                    :root {
+                        --bg: var(--vscode-editor-background);
+                        --fg: var(--vscode-editor-foreground);
+                        --border: var(--vscode-editorWidget-border);
+                        --code-bg: var(--vscode-textCodeBlock-background, #1e1e1e);
+                        --font: var(--vscode-editor-font-family, Consolas, 'Courier New', monospace);
+                    }
+                    body {
+                        padding: 20px;
+                        color: var(--fg);
+                        background: var(--bg);
+                        font-family: var(--vscode-font-family, sans-serif);
+                        line-height: 1.5;
+                    }
+                    h2 {
+                        margin-bottom: 10px;
+                    }
+                    pre {
+                        white-space: pre-wrap;
+                        word-break: break-word;
+                        background: var(--code-bg);
+                        border: 1px solid var(--border);
+                        border-radius: 8px;
+                        padding: 14px;
+                        font-family: var(--font);
+                        font-size: 13px;
+                    }
                 </style>
             </head>
             <body>
-                <h2>Analysis Results</h2>
-                ${results.length > 0 ? issuesHtml : '<p>No issues found in implementation.</p>'}
-                
-                <h2>Suggestions</h2>
-                ${suggestions.length > 0 
-                    ? `<ul>${suggestionsHtml}</ul>` 
-                    : '<p>No suggestions available.</p>'}
+                <h2>AI Analysis</h2>
+                <pre>${escaped}</pre>
             </body>
             </html>
         `;

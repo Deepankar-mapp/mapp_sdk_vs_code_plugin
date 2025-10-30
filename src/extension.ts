@@ -9,8 +9,15 @@ import { MAPP_SDK_DOCUMENTATION } from './data/mappDocumentation';
 export function activate(context: vscode.ExtensionContext) {
     console.log('Mapp Analyzer is now active!');
 
+    // Get the active text editor if there is one
+    const activeEditor = vscode.window.activeTextEditor;
+    if (!activeEditor) {
+        vscode.window.showErrorMessage('Please open a file to analyze');
+        return;
+    }
+
     const analyzer = new MappAnalyzer();
-    const aiAssistant = new MappAIAssistant();
+    const aiAssistant = new MappAIAssistant(activeEditor.document);
     
     let analyzeCommand = vscode.commands.registerCommand('mapp-analyzer.analyze', async () => {
         try {
@@ -56,10 +63,10 @@ export function activate(context: vscode.ExtensionContext) {
                 const analysis = await aiAssistant.analyzeCode(projectCode);
                 
                 ProgressIndicator.updateMessage('Generating suggestions...');
-                const suggestions = await aiAssistant.getSuggestions(analysis);
+               // const suggestions = await aiAssistant.getSuggestions(analysis);
 
                 // Combine analyzer results with AI analysis
-                const combinedResults = [
+               /* const combinedResults = [
                     ...results,
                     {
                         file: 'AI Analysis',
@@ -76,19 +83,16 @@ export function activate(context: vscode.ExtensionContext) {
                             }))
                         ]
                     }
-                ];
+                ]; */
 
                 ProgressIndicator.updateMessage('Preparing results...');
-                AnalysisResultPanel.show(
-                    combinedResults.filter(r => r.issues && r.issues.length > 0),
-                    suggestions.filter(s => s && s.length > 0)
-                );
+               AnalysisResultPanel.show(analysis);
                 
-                if (!analysis.criticalIssues.length && !analysis.improvements.length) {
+                if (!analysis || (typeof analysis === 'string' && analysis.includes('No Mapp SDK implementation found'))) {
                     vscode.window.showWarningMessage('No Mapp SDK implementation found. Please add Mapp SDK to your project.');
                 } else {
-                    const issueCount = analysis.criticalIssues.filter(i => i !== 'No critical issues found').length;
-                    const improvementCount = analysis.improvements.filter(i => i !== 'No improvements suggested').length;
+                    const issueCount = 'No critical issues found';
+                    const improvementCount = 'No improvements suggested';
                     vscode.window.showInformationMessage(
                         `Analysis completed: Found ${issueCount} issues and ${improvementCount} possible improvements`
                     );

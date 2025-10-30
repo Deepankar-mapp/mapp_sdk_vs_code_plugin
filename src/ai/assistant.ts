@@ -1,12 +1,23 @@
 import * as vscode from 'vscode';
 import OpenAI from 'openai';
-import { MAPP_SDK_DOCUMENTATION } from '../data/mappDocumentation';
+import { TechnologyRules, SupportedTechnology } from '../models/technology';
+import { TechnologyDetector } from '../utils/technologyDetector';
+import { TechnologyRulesRegistry } from '../data/technologyRules';
+
+interface AnalysisResult {
+    criticalIssues: string[];
+    improvements: string[];
+    missingImplementations: string[];
+    securityConcerns: string[];
+}
 
 export class MappAIAssistant {
     private openai: OpenAI;
+    private currentTechnology: SupportedTechnology;
+    private rules: TechnologyRules;
     private context: string;
 
-    constructor() {
+    constructor(document: vscode.TextDocument) {
         // Initialize OpenAI with API key from VS Code settings
         const config = vscode.workspace.getConfiguration('mappAnalyzer');
         const apiKey = config.get<string>('openAIKey');
@@ -19,23 +30,32 @@ export class MappAIAssistant {
             apiKey: apiKey || process.env.OPENAI_API_KEY
         });
 
-        this.context = `
-Mapp SDK Documentation:
+        this.currentTechnology = TechnologyDetector.detectTechnology(document);
+        this.rules = TechnologyRulesRegistry[this.currentTechnology];
+        
+        this.context = this.createContext();
+    }
+
+    private createContext(): string {
+        return `
+Technology: ${this.rules.name}
+Documentation for ${this.rules.name}:
+
 1. Initialization Requirements:
-${JSON.stringify(MAPP_SDK_DOCUMENTATION.initialization, null, 2)}
+${JSON.stringify(this.rules.documentation.initialization, null, 2)}
 
 2. Available Methods:
-${JSON.stringify(MAPP_SDK_DOCUMENTATION.methods, null, 2)}
+${JSON.stringify(this.rules.documentation.methods, null, 2)}
 
 3. Best Practices:
-${MAPP_SDK_DOCUMENTATION.bestPractices.join('\n')}
+${this.rules.documentation.bestPractices.join('\n')}
 
 4. Error Handling:
-${JSON.stringify(MAPP_SDK_DOCUMENTATION.errorHandling, null, 2)}
+${JSON.stringify(this.rules.documentation.errorHandling, null, 2)}
 `;
     }
 
-    async analyzeCode(code: string): Promise<AnalysisResult> {
+    async analyzeCode(code: string): Promise<string> {
         const prompt = this.createAnalysisPrompt(code);
         
         try {
@@ -43,17 +63,12 @@ ${JSON.stringify(MAPP_SDK_DOCUMENTATION.errorHandling, null, 2)}
             
             if (!code.trim()) {
                 console.log('No code found to analyze');
-                return {
-                    criticalIssues: ['No Mapp SDK implementation found in the project'],
-                    improvements: [],
-                    missingImplementations: ['Complete Mapp SDK implementation is missing'],
-                    securityConcerns: []
-                };
+                return 'No Mapp SDK implementation found in the project';
             }
 
             // Add more structured system prompt
             const completion = await this.openai.chat.completions.create({
-                model: "gpt-5-turbo",
+                model: "gpt-5",
                 messages: [
                     {
                         role: "system",
@@ -72,7 +87,7 @@ Documentation reference: ${this.context}`
                         content: prompt
                     }
                 ],
-                temperature: 0.2
+                //temperature: 0.2
             });
 
             const response = completion.choices[0].message.content || '';
@@ -80,25 +95,15 @@ Documentation reference: ${this.context}`
 
             if (!response.trim()) {
                 console.log('Empty response from AI');
-                return {
-                    criticalIssues: ['AI analysis failed to provide results'],
-                    improvements: [],
-                    missingImplementations: ['Unable to analyze implementation'],
-                    securityConcerns: []
-                };
+                return "AI analysis failed to provide results";
             }
 
-            const result = this.parseAnalysisResponse(response);
-            console.log('Parsed Analysis Result:', result); // Log parsed result
-            return result;
+           // const result = this.parseAnalysisResponse(response);
+            //console.log('Parsed Analysis Result:', result); // Log parsed result
+            return response;
         } catch (error) {
             console.error('AI analysis failed:', error);
-            return {
-                criticalIssues: [`Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`],
-                improvements: [],
-                missingImplementations: [],
-                securityConcerns: []
-            };
+            return `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
         }
     }
 
@@ -107,19 +112,19 @@ Documentation reference: ${this.context}`
 
         try {
             const completion = await this.openai.chat.completions.create({
-                model: "gpt-5-turbo",
+                model: "gpt-5",
                 messages: [
                     {
                         role: "system",
                         content: `You are a Mapp SDK expert. Provide specific, actionable suggestions to improve the code.
-                        Base your suggestions on these best practices: ${JSON.stringify(MAPP_SDK_DOCUMENTATION.bestPractices)}`
+                        Base your suggestions on these best practices: ${JSON.stringify(this.rules.documentation.bestPractices)}`
                     },
                     {
                         role: "user",
                         content: prompt
                     }
                 ],
-                temperature: 0.3,
+                //temperature: 0.3,
             });
 
             return this.parseSuggestions(completion.choices[0].message.content || '');
@@ -134,7 +139,7 @@ Documentation reference: ${this.context}`
 
         try {
             const completion = await this.openai.chat.completions.create({
-                model: "gpt-5-turbo",
+                model: "gpt-5",
                 messages: [
                     {
                         role: "system",
@@ -145,7 +150,7 @@ Documentation reference: ${this.context}`
                         content: prompt
                     }
                 ],
-                temperature: 0.2,
+                //temperature: 0.2,
             });
 
             return completion.choices[0].message.content || '';
@@ -334,11 +339,4 @@ Include only the fixed code without explanations.
 
         return methods;
     }
-}
-
-interface AnalysisResult {
-    criticalIssues: string[];
-    improvements: string[];
-    missingImplementations: string[];
-    securityConcerns: string[];
 }
