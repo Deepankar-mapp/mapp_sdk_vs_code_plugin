@@ -58,9 +58,12 @@ exports.MAPP_SDK_DOCUMENTATION = {
         isReady: {
             required: false,
             parameters: {},
-            example: 'bool isRegistered = await MappSdk.isReady()',
+            example: 'MappSdk.isReady();',
             requiresInitialization: true,
-            description: 'Check if the device is registered in Mapp'
+            description: 'Check if MappSdK.isReady() is being called at all in the developers code and flag if it is not there since this is recommended.',
+            success_message: 'isReady called',
+            warning_message: 'isReady not used (Recommended)',
+            error_message: null,
         },
         getAlias: {
             required: false,
@@ -71,16 +74,13 @@ exports.MAPP_SDK_DOCUMENTATION = {
         },
         setAlias: {
             required: false,
-            parameters: {
-                alias: {
-                    type: 'string',
-                    required: true,
-                    description: 'User alias identifier'
-                }
-            },
-            example: 'await MappSdk.setAlias("userAlias")',
+            parameters: {},
+            example: 'MappSdk.setAlias("your_alias"); ',
             requiresInitialization: true,
-            description: 'Set device alias'
+            description: 'Check if the MappSdk.setAlias() has been called or not. The argument is a string. | Check if setAliasWithResend() has been called or not. This method has 2 arguments, one a s string and another is a boolean',
+            success_message: null,
+            warning_message: 'SetAlias is used incorrectly',
+            error_message: 'SetAlias is not used',
         },
         isPushEnabled: {
             required: true,
@@ -91,16 +91,13 @@ exports.MAPP_SDK_DOCUMENTATION = {
         },
         setPushEnabled: {
             required: true,
-            parameters: {
-                enabled: {
-                    type: 'boolean',
-                    required: true,
-                    description: 'Enable or disable push notifications'
-                }
-            },
-            example: 'await MappSdk.setPushEnabled(true)',
+            parameters: {},
+            example: 'MappSdk.setPushEnabled(true) //boolean input supported',
             requiresInitialization: true,
-            description: 'Enable or disable push notifications'
+            description: 'Check if the code has MappSdk.setPushEnabled(true) to ensure that the user gets the push notifications as expected. If it is not present, then flag it',
+            success_message: 'setPushEnabled is called',
+            warning_message: 'setPushEnabled is called incorrectly',
+            error_message: 'setPushEnabled is not called',
         },
         handledPushOpen: {
             required: true,
@@ -122,15 +119,47 @@ exports.MAPP_SDK_DOCUMENTATION = {
             example: 'await MappSdk.stopGeoFencing()',
             requiresInitialization: true,
             description: 'Stop geofencing services'
+        },
+        engage: {
+            required: true,
+            parameters: {
+                sdkKey: {
+                    type: 'string',
+                    required: true,
+                    description: 'this is the authentication key and identifies the user and the channel in Mapp Engage system'
+                },
+                googleProjectId: {
+                    type: 'string',
+                    required: true,
+                    description: 'id from google project. Can be empty string for backward compatibility'
+                },
+                SERVER: {
+                    type: 'enum',
+                    required: true,
+                    description: 'Server for engagement (L3, L3_US, EMC, EMC_US, CROC)',
+                    validValues: ['L3', 'L3_US', 'EMC', 'EMC_US', 'CROC']
+                },
+                appID: {
+                    type: 'string',
+                    required: true,
+                    description: 'application id, provided by Mapp Engage system'
+                },
+                tenantID: {
+                    type: 'string',
+                    required: true,
+                    description: 'customer id, provided by Mapp Engage system'
+                }
+            },
+            example: 'await MappSdk.engage(appConfig.sdkKey,"",appConfig.server,appConfig.appID,appConfig.tenantID); ',
+            requiresInitialization: false,
+            description: 'Engage method should always be the first method before any other Mapp functions . This is to initialise Mapp SDK | Check engage method should be setup correctly | Check if the code imports Mapp SDK to be able to use engage function | Check if the code has MappSdk.isReady() method implemented. This method can be called before the implementation of functions like setAlias(), setAliasWithResend(), or any other function except engage()',
+            success_message: 'Correct usage of Engage method',
+            warning_message: 'isReady not used (Recommended)',
+            error_message: 'Incorrect implementation of Engage method',
         }
     },
     requiredMethods: [
-        'isReady',
-        'getAlias',
-        'setAlias',
-        'isPushEnabled',
-        'setPushEnabled',
-        'handledPushOpen'
+        'engage'
     ],
     geofencingMethods: [
         'startGeoFencing',
@@ -148,7 +177,7 @@ exports.MAPP_SDK_DOCUMENTATION = {
     bestPractices: [
         'Initialize SDK at application startup using engage method',
         'Handle iOS specific configuration in AppoxeeCofig.plist',
-        'Always check device registration with isReady()',
+        'Always check if plugin is initialized with isReady()',
         'Implement proper error handling with try-catch blocks',
         'Use appropriate server constant from the SERVER enum',
         'Handle push notification permissions appropriately',

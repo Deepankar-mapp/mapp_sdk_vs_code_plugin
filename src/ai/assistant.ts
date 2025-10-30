@@ -53,7 +53,7 @@ ${JSON.stringify(MAPP_SDK_DOCUMENTATION.errorHandling, null, 2)}
 
             // Add more structured system prompt
             const completion = await this.openai.chat.completions.create({
-                model: "gpt-4",
+                model: "gpt-5-turbo",
                 messages: [
                     {
                         role: "system",
@@ -72,7 +72,7 @@ Documentation reference: ${this.context}`
                         content: prompt
                     }
                 ],
-                temperature: 0.1
+                temperature: 0.2
             });
 
             const response = completion.choices[0].message.content || '';
@@ -107,7 +107,7 @@ Documentation reference: ${this.context}`
 
         try {
             const completion = await this.openai.chat.completions.create({
-                model: "gpt-4",
+                model: "gpt-5-turbo",
                 messages: [
                     {
                         role: "system",
@@ -134,7 +134,7 @@ Documentation reference: ${this.context}`
 
         try {
             const completion = await this.openai.chat.completions.create({
-                model: "gpt-4",
+                model: "gpt-5-turbo",
                 messages: [
                     {
                         role: "system",
@@ -157,56 +157,50 @@ Documentation reference: ${this.context}`
 
     private createAnalysisPrompt(code: string): string {
         return `
-Analyze this Flutter project's Mapp SDK implementation:
+Analyze this Flutter code for Mapp SDK implementation compliance.
+Base your analysis ONLY on the provided documentation.
 
+CODE TO ANALYZE:
 ${code}
 
-IMPORTANT: 
-- Consider both direct implementations and method references
-- Check for function calls in different forms (with/without whitespace)
-- Look for implementations across multiple files
-- Consider both async/await and Promise-based calls
-- Check for function aliases or wrapped implementations
+REQUIRED CHECKS:
 
-Provide a detailed analysis focusing on these key areas:
+1. SDK Initialization (CRITICAL):
+- Search for 'MappSdk.engage(' or '.engage(' calls
+- Verify exact parameter count and order: (sdkKey, googleProjectId, server, appId, tenantId)
+- Flag if engage() is not found or parameters are incorrect
 
-1. Required Methods Check:
-   - Check for each required method:
-     * MappSdk.isReady() - Status: [Found/Missing]
-     * MappSdk.getAlias() - Status: [Found/Missing]
-     * MappSdk.setAlias() - Status: [Found/Missing]
-     * MappSdk.isPushEnabled() - Status: [Found/Missing]
-     * MappSdk.setPushEnabled() - Status: [Found/Missing]
-     * MappSdk.handledPushOpen(argument) - Status: [Found/Missing]
-        Note: Check for both direct method calls and function assignments like:
-        - MappSdk.handledPushOpen(argument)
-        - MappSdk.handledPushOpen = (arguments) => handler(arguments)
-   - For each missing method, provide exact implementation needed
+2. Method Implementation Status:
+For each method, indicate:
+- [FOUND/MISSING] MappSdk.engage()
+- [FOUND/MISSING] MappSdk.isPushEnabled()
+- [FOUND/MISSING] MappSdk.setPushEnabled()
+- [FOUND/MISSING] MappSdk.handledPushOpen()
 
-2. Push Notification Implementation:
-   - Check for conflicting providers (OneSignal, etc.)
-   - Verify push handling implementation
-   - List any missing push notification setup
+3. Method Order & Dependencies:
+- Verify engage() is called before other SDK methods
+- Check for isReady() calls before SDK operations
+- Look for proper async/await usage
 
-3. Geolocation Features (if applicable):
-   - Location permissions status
-   - MappSdk.startGeoFencing() implementation
-   - MappSdk.stopGeoFencing() implementation
+4. Error Handling:
+- Check for try-catch blocks around SDK calls
+- Verify proper error handling patterns
 
-4. Initialization and Error Handling:
-   - Verify engage() method parameters
-   - Check try-catch implementation
-   - Verify initialization order
+FORMAT YOUR RESPONSE AS FOLLOWS:
+Critical Issues:
+- <list each critical issue>
 
-For each issue found, provide:
-- File: [filename]
-- Line: [line number if available]
-- Issue: [description]
-- Fix: [exact code needed]
-- Priority: [Critical/Warning/Info]
+Missing Implementations:
+- <list missing required methods>
 
-Use bullet points (-) for listing issues and findings.
-`;
+Improvements Needed:
+- <list suggested improvements>
+
+Security Concerns:
+- <list security issues>
+
+Use exact method names and parameters from the documentation.
+Flag ANY deviation from the documentation as an issue.`;
     }
 
     private createSuggestionsPrompt(analysis: AnalysisResult): string {
@@ -241,82 +235,70 @@ Include only the fixed code without explanations.
 
     private parseAnalysisResponse(response: string): AnalysisResult {
         try {
-            console.log('Starting to parse response');
+            // Initialize result categories
+            const result: AnalysisResult = {
+                criticalIssues: [],
+                improvements: [],
+                missingImplementations: [],
+                securityConcerns: []
+            };
+
+            // Split response into sections
+            const sections = response.split(/\n\n/);
             
-            // Split by numbered sections
-            const sections = response.split(/\d+\./);
-            
-            // Extract information from each section
-            const requiredMethodsSection = sections.find(s => s.includes('Required Methods Check')) || '';
-            const pushSection = sections.find(s => s.includes('Push Notification Implementation')) || '';
-            const geoSection = sections.find(s => s.includes('Geolocation Features')) || '';
-            const initSection = sections.find(s => s.includes('Initialization and Error Handling')) || '';
+            sections.forEach(section => {
+                const lines = section.split('\n');
+                
+                lines.forEach(line => {
+                    const trimmedLine = line.trim();
+                    
+                    // Skip empty lines
+                    if (!trimmedLine) return;
 
-            // Parse issues from each section
-            const criticalIssues: string[] = [];
-            const improvements: string[] = [];
-            const missingImplementations: string[] = [];
-            const securityConcerns: string[] = [];
-
-            // Extract bullet points from each section
-            const extractBulletPoints = (text: string): string[] => 
-                text.split('\n')
-                    .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
-                    .map(line => line.trim().replace(/^[-*]\s*/, ''));
-
-            // Process required methods
-            const methodIssues = extractBulletPoints(requiredMethodsSection);
-            methodIssues.forEach(issue => {
-                if (issue.toLowerCase().includes('missing')) {
-                    missingImplementations.push(issue);
-                }
+                    // Check for method status indicators
+                    if (trimmedLine.includes('[MISSING]')) {
+                        if (trimmedLine.includes('MappSdk.engage')) {
+                            result.criticalIssues.push('Missing SDK initialization: MappSdk.engage() not found');
+                        }
+                        result.missingImplementations.push(trimmedLine);
+                    }
+                    
+                    // Parse specific sections
+                    if (section.toLowerCase().includes('critical issues:')) {
+                        if (trimmedLine.startsWith('-')) {
+                            result.criticalIssues.push(trimmedLine.substring(1).trim());
+                        }
+                    } else if (section.toLowerCase().includes('improvements needed:')) {
+                        if (trimmedLine.startsWith('-')) {
+                            result.improvements.push(trimmedLine.substring(1).trim());
+                        }
+                    } else if (section.toLowerCase().includes('security concerns:')) {
+                        if (trimmedLine.startsWith('-')) {
+                            result.securityConcerns.push(trimmedLine.substring(1).trim());
+                        }
+                    }
+                });
             });
 
-            // Process push notification issues
-            const pushIssues = extractBulletPoints(pushSection);
-            pushIssues.forEach(issue => {
-                if (issue.toLowerCase().includes('conflict')) {
-                    criticalIssues.push(`Critical: ${issue}`);
-                } else if (issue.toLowerCase().includes('missing')) {
-                    missingImplementations.push(issue);
-                } else {
-                    improvements.push(issue);
-                }
-            });
-
-            // Process initialization issues
-            const initIssues = extractBulletPoints(initSection);
-            initIssues.forEach(issue => {
-                if (issue.toLowerCase().includes('missing') || 
-                    issue.toLowerCase().includes('required')) {
-                    criticalIssues.push(issue);
-                } else {
-                    improvements.push(issue);
-                }
-            });
-
-            // If no issues found but code exists, add default message
-            if (criticalIssues.length === 0 && 
-                missingImplementations.length === 0 && 
-                improvements.length === 0) {
-                return {
-                    criticalIssues: ['Implementation check required: Please verify Mapp SDK integration'],
-                    improvements: ['Consider implementing additional Mapp SDK features'],
-                    missingImplementations: ['Verify all required methods are implemented'],
-                    securityConcerns: []
-                };
+            // Ensure at least one item in each category
+            if (result.criticalIssues.length === 0) {
+                result.criticalIssues = ['No critical issues found'];
+            }
+            if (result.improvements.length === 0) {
+                result.improvements = ['No improvements needed'];
+            }
+            if (result.missingImplementations.length === 0) {
+                result.missingImplementations = ['All required methods implemented'];
+            }
+            if (result.securityConcerns.length === 0) {
+                result.securityConcerns = ['No security concerns identified'];
             }
 
-            return {
-                criticalIssues: criticalIssues.length > 0 ? criticalIssues : ['No critical issues found'],
-                improvements: improvements.length > 0 ? improvements : ['No improvements needed'],
-                missingImplementations: missingImplementations.length > 0 ? missingImplementations : ['No missing implementations detected'],
-                securityConcerns: securityConcerns
-            };
+            return result;
         } catch (error) {
             console.error('Failed to parse AI response:', error);
             return {
-                criticalIssues: ['Analysis parsing error - please try again'],
+                criticalIssues: ['Analysis parsing error'],
                 improvements: [],
                 missingImplementations: [],
                 securityConcerns: []
@@ -332,6 +314,25 @@ Include only the fixed code without explanations.
         } catch (error) {
             return [];
         }
+    }
+
+    private detectSdkMethods(code: string): Set<string> {
+        const methods = new Set<string>();
+        const methodPatterns = [
+            /MappSdk\.engage\s*\(/,
+            /MappSdk\.isPushEnabled\s*\(/,
+            /MappSdk\.setPushEnabled\s*\(/,
+            /MappSdk\.handledPushOpen\s*\(/,
+            /MappSdk\.isReady\s*\(/
+        ];
+
+        methodPatterns.forEach(pattern => {
+            if (pattern.test(code)) {
+                methods.add(pattern.source.split('\\.')[1].split('\\')[0]);
+            }
+        });
+
+        return methods;
     }
 }
 

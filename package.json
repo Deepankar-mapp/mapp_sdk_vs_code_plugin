@@ -2,7 +2,7 @@
     "name": "mapp-flutter-analyzer",
     "displayName": "Mapp Flutter SDK Assistant",
     "description": "AI-powered Mapp Flutter SDK implementation analyzer and assistant",
-    "version": "1.0.10",
+    "version": "1.0.16",
     "publisher": "deepankarmathur",
     "engines": {
         "vscode": "^1.75.0"
